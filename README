@@ -1,0 +1,40 @@
+Overview
+========
+TODOlistic is a web-app to read e-mail as though it was a TODO list.
+
+It snarfs the e-mail through IMAP or POP3 and puts it in a Maildir.
+It then classifies the e-mail into one of five types:
+1. TODO -- a thing that needs to be done
+2. Notification -- a notification
+3. Discussion
+4. Content -- a file attachment with a header
+5. Spam
+
+Classification, in metadata, is kept in a rolling-file as described in
+http://moshez.wordpress.com/2008/02/07/keeping-changing-configuration-data/
+
+The user can override any of those things to reclassify a piece of e-mail.
+The system learns from the evidence of the user reclassifying.
+TODO: Think about where to keep the evidence.
+
+The web-app is composed of:
+* Dashboard
+** Shows summary of everything else
+* TODO
+** Shows TODO items, ordered in "magic order" (priority+due-date)
+** Allows adding comments to TODO items, adding TODO items, marking them as done, etc.
+* Discussion
+** UI inspired on Facebook -- original message that started the thread, then things beneath it.
+** UI tries to guess whether to full-collapse, full-show or show-last-two
+* Content
+** Shows all files, with annotations on their contents
+** Allows searching
+* Spam
+** Mostly for reclassifying into something else.
+
+Architecture:
+"Assume AJAX":
+* Twisted with:
+** RESTful interface for retrieval
+** REST/JSON-RPC for setting stuff
+* HTML with Javascript for UI
