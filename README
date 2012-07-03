@@ -10,12 +10,88 @@ It then classifies the e-mail into one of five types:
 4. Content -- a file attachment with a header
 5. Spam
 
-Classification, in metadata, is kept in a rolling-file as described in
-http://moshez.wordpress.com/2008/02/07/keeping-changing-configuration-data/
+A separate maildir is used for "archived" content. Archived content is
+content that the user no longer considers active.
+For example:
+* Spam is auto-archived
+* Content is archived when the file has served its purpose
+* A discussion is archived when the user no longer cares to engage in it
+* A notification is archived when the user has acted on the notification
+* A TODO is archived when the task is completed.
+
+Classification is kept in redis. All keys are actually prefixed by a hash of the user id.
+
+HSET type <filename> todo/notification/discussion/content/spam -- this is set last. Any filename
+                                                                  which does not have it has not been fully processed.
+HSET classifier <filename> system/user
+
+As an advisory, files are also marked as archived/non-archived in redis:
+
+HSET status <filename> archived/non-archived
+
+...and have their metadata extracted
+
+HSET headers <filename> <header>
+
+On start-up, all non-archived filenames are checked to see they're non-archived:
+
+HGET status <filename1> .....
+
+and any that are archived are set to "non-archived".
+
+Archival works by:
+[1] Setting the status to "archived"
+[2] Moving the file
+
+De-archival works by:
+[1] Moving the file
+[2] Setting the status to "non-archived"
+
+Sometimes, several e-mails participate in a single "object" (e.g., multiple items in the same discussion)
+
+Objects are created with:
+SADD objects <object uuid>
+SADD archived-objects <object uuid>
+
+On start-up, anything in the intersection of archived-objects and objects is removed from objects.
+
+E-mails are added to objects with:
+SADD object:<object uuid> <filename>
+
+There are also a few counters:
+
+HSET counter discussion/notification/etc. 0
+HINCR counter notification 1
+
+Finally, there are markovian counters for words:
+
+HINCR words word1:word2 1
+
+Notes:
+":" is "total words"
+The "empty word" is at the beginning/end of an e-mail.
 
 The user can override any of those things to reclassify a piece of e-mail.
 The system learns from the evidence of the user reclassifying.
-TODO: Think about where to keep the evidence.
+Note that auto-classifications do not "teach", to avoid positive feedback loops.
+Reclassifying:
+* Breaks e-mail into words (uninterrupted alphabetics)
+* If classification existed and was manual, removal counters from existing...
+* ...regardless, add counters to current. 
+
+This is not done atomically -- the assumption is that the occasional crash
+only introduces mild amounts of noise.
+
+Contents:
+* Every attachment is extracted, and saved.
+
+SADD attachment:<filename> <md5sum>
+
+Every filename also has metadata:
+
+HSET metadata:<filename> <value>
+
+Different metadata apply for every type of file.
 
 The web-app is composed of:
 * Dashboard
@@ -38,3 +114,48 @@ Architecture:
 ** RESTful interface for retrieval
 ** REST/JSON-RPC for setting stuff
 * HTML with Javascript for UI
+
+Twisted REST commands:
+
+GET /summary/
+--> JSON for summary
+
+GET /message/<message id>/status
+--> Status
+
+PUT /message/<message id>/status
+<-- Status
+
+GET /message/<message id>/type
+--> type
+
+PUT /message/<message id>/type
+<-- type
+
+GET /message/<message id>/attachment/<hash>
+<-- Content
+
+PUT /message/<message id>/attachment/<hash>
+--> Content
+
+GET /todo/[?archived=yes]
+--> JSON for todo
+
+PUT /todo/<item id>/due
+<-- JSON for due date
+
+PUT /todo/<item id>/priority
+<-- JSON with number 1-5
+
+GET /discussion/[?archived=yes]
+--> discussions
+
+GET /discussion/<discussion id>?max-show=limit
+--> discussion
+
+PUT /discussion/<discussion id>/<message id>
+<-- message 
+
+GET /content/[?archived=yes]
+
+GET /spam/[?archived=yes]
