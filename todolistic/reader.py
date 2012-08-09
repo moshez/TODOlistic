@@ -19,10 +19,10 @@ def readTODO(fname):
     return TODOItem(**data)
 
 def readDirectory(dname):
-    ret = []
+    ret = dict()
     for fname in os.listdir(dname):
-        fname = os.path.join(dname, fname)
-        ret.append(readTODO(fname))
+        fullFname = os.path.join(dname, fname)
+        ret[fname] = readTODO(fullFname)
     return ret
 
 
