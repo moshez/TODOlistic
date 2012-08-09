@@ -1,0 +1,9 @@
+{
+"title": "Do the laundry",
+"notes": [
+    {"content": "Put clothes in", "author": "moshez"},
+    {"content": "Turn on machine", "author": "mzadka"}
+],
+"due": "2012-09-01T20:00:00.00Z",
+"repeats": false
+}
